@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Inter", sans-serif;
+  
+  --color-on-tertiary: #fcf7ff;
+  --color-secondary: #5e5f60;
+  --color-outline-variant: #adb3b4;
+  --color-secondary-container: #e2e2e3;
+  --color-on-tertiary-fixed: #3e3a54;
+  --color-error-container: #fe8983;
+  --color-on-secondary: #f9f9fa;
+  --color-surface-dim: #d4dbdd;
+  --color-on-tertiary-container: #514d68;
+  --color-on-secondary-fixed: #3e4041;
+  --color-tertiary-fixed-dim: #d4cdee;
+  --color-primary-fixed-dim: #d6d3d7;
+  --color-background: #f9f9f9;
+  --color-outline: #757c7d;
+  --color-inverse-primary: #f9f5fa;
+  --color-on-error: #fff7f6;
+  --color-on-background: #2d3435;
+  --color-secondary-fixed-dim: #d4d4d5;
+  --color-on-primary-container: #525155;
+  --color-on-secondary-fixed-variant: #5a5c5d;
+  --color-inverse-on-surface: #9c9d9d;
+  --color-tertiary-dim: #54506b;
+  --color-surface-container-highest: #dde4e5;
+  --color-secondary-fixed: #e2e2e3;
+  --color-on-secondary-container: #505253;
+  --color-on-primary-fixed-variant: #5c5b5e;
+  --color-surface-container-low: #f2f4f4;
+  --color-surface-container: #ebeeef;
+  --color-tertiary-container: #e3dbfd;
+  --color-surface-container-high: #e4e9ea;
+  --color-on-error-container: #752121;
+  --color-secondary-dim: #525354;
+  --color-on-surface-variant: #5a6061;
+  --color-error-dim: #4e0309;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-surface: #2d3435;
+  --color-surface: #f9f9f9;
+  --color-inverse-surface: #0c0f0f;
+  --color-surface-tint: #5f5e61;
+  --color-primary-container: #e4e1e6;
+  --color-error: #9f403d;
+  --color-on-tertiary-fixed-variant: #5b5672;
+  --color-primary-dim: #535255;
+  --color-on-primary: #faf7fb;
+  --color-primary: #5f5e61;
+  --color-primary-fixed: #e4e1e6;
+  --color-surface-variant: #dde4e5;
+  --color-tertiary: #605c78;
+  --color-tertiary-fixed: #e3dbfd;
+  --color-on-primary-fixed: #3f3f42;
+  --color-surface-bright: #f9f9f9;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-sans antialiased;
+  }
+}
+
+.glass-overlay {
+  backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #ebeeef;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #dde4e5;
+}
