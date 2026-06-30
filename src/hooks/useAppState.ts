@@ -75,6 +75,10 @@ export function useAppState() {
   const { addToast } = useToast();
   const { data: initData, isLoading, error } = useAppInit();
 
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['init'] });
+  }, [queryClient]);
+
   const dummyMembers = useMemo(() => initData?.members as unknown as Member[] || [], [initData]);
   const dummyTasks = useMemo(() => {
     if (!initData) return [];
@@ -105,20 +109,35 @@ export function useAppState() {
   }, [initData]);
 
   const derivedCurrentUser = useMemo(() => members[0] || { id: '', name: '', avatar: '', role: 'user' as const, email: '' }, [members]);
-  const derivedSprintId = useMemo(() => sprints[0]?.id || 'backlog', [sprints]);
-  const derivedProjectId = useMemo(() => projects[0]?.id || '', [projects]);
+  const derivedSprintId = useMemo(() => {
+    const backlog = sprints.find(s => s.status === 'backlog');
+    return backlog?.id || sprints[0]?.id || '';
+  }, [sprints]);
 
   const [manualCurrentUser, setManualCurrentUser] = useState<Member | null>(null);
   const [manualSprintId, setManualSprintId] = useState<string | null>(null);
   const [manualProjectId, setManualProjectId] = useState<string | null>(null);
 
   const currentUser = manualCurrentUser || derivedCurrentUser;
+
+  const visibleProjects = useMemo(() => {
+    if (!currentUser?.role || currentUser.role === 'admin') return projects;
+    const userTeams = teams.filter(t => t.memberIds?.includes(currentUser.id)).map(t => t.id);
+    return projects.filter(p => p.teamId && userTeams.includes(p.teamId));
+  }, [projects, teams, currentUser]);
+
+  const derivedProjectId = useMemo(() => visibleProjects[0]?.id || projects[0]?.id || '', [visibleProjects, projects]);
+
   const activeSprintId = manualSprintId || derivedSprintId;
   const selectedProjectId = manualProjectId || derivedProjectId;
 
-  const setCurrentUser = useCallback((user: Member) => setManualCurrentUser(user), []);
+  const setCurrentUser = useCallback((user: Member) => {
+    setManualCurrentUser(user);
+    setManualProjectId(null);
+  }, []);
+
   const setSelectedProjectId = useCallback((id: string) => setManualProjectId(id), []);
-  const setActiveSprintId = useCallback((id: string | 'backlog') => setManualSprintId(id), []);
+  const setActiveSprintId = useCallback((id: string) => setManualSprintId(id), []);
 
   const emptyFilter: FilterState = { search: '', projectIds: [], memberIds: [], categories: [], labels: [] };
 
@@ -129,22 +148,12 @@ export function useAppState() {
   const currentProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const currentTeam = useMemo(() => teams.find(t => t.id === currentProject?.teamId), [teams, currentProject]);
 
-  const visibleProjects = useMemo(() => {
-    if (!currentUser?.role || currentUser.role === 'admin') return projects;
-    const userTeams = teams.filter(t => t.memberIds?.includes(currentUser.id)).map(t => t.id);
-    return projects.filter(p => p.teamId && userTeams.includes(p.teamId));
-  }, [projects, teams, currentUser]);
-
   const allCategories = useMemo(() => Array.from(new Set(dummyTasks.map(t => t.category))), [dummyTasks]);
   const allLabels = useMemo(() => Array.from(new Set(dummyTasks.flatMap(t => t.labels))), [dummyTasks]);
 
   const filteredTasks = useMemo(() => {
     return dummyTasks.filter(task => {
-      if (activeSprintId === 'backlog') {
-        if (task.sprintId) return false;
-      } else {
-        if (task.sprintId !== activeSprintId) return false;
-      }
+      if (task.sprintId !== activeSprintId) return false;
       if (task.projectId !== selectedProjectId) return false;
       if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase()) && !task.description.toLowerCase().includes(filters.search.toLowerCase())) return false;
       if (filters.projectIds.length > 0 && !filters.projectIds.includes(task.projectId)) return false;
@@ -171,9 +180,8 @@ export function useAppState() {
         assigneeId: updatedTask.assignee?.id || null,
         dueDate: updatedTask.dueDate, order: updatedTask.order,
       }),
-    }).then(() => queryClient.invalidateQueries({ queryKey: ['init'] }))
-    .catch(err => addToast(err.message));
-  }, [queryClient, addToast]);
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
 
   const handleTasksReorder = useCallback((newTasks: Task[]) => {
     Promise.all(newTasks.map((task, i) =>
@@ -182,9 +190,8 @@ export function useAppState() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: task.status, order: i }),
       })
-    )).then(() => queryClient.invalidateQueries({ queryKey: ['init'] }))
-    .catch(err => addToast(err.message));
-  }, [queryClient, addToast]);
+    )).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
 
   const handleAddTask = useCallback((status?: string) => {
     const defaultStatus = currentProject?.columns?.[0]?.id || 'todo';
@@ -193,10 +200,10 @@ export function useAppState() {
     const taskData = {
       id: newId,
       title: 'New Task',
-      description: 'Enter description here...',
+      description: '',
       status: status || defaultStatus,
       projectId: selectedProjectId,
-      sprintId: activeSprintId === 'backlog' ? null : activeSprintId,
+      sprintId: activeSprintId || null,
       points: 0,
       category: 'Engineering',
       labels: ['New'],
@@ -210,11 +217,10 @@ export function useAppState() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(taskData),
-    }).then(() => queryClient.invalidateQueries({ queryKey: ['init'] }))
-    .catch(err => addToast(err.message));
+    }).then(invalidate).catch(err => addToast(err.message));
 
     return newId;
-  }, [currentProject, selectedProjectId, activeSprintId, currentUser, dummyTasks, queryClient, addToast]);
+  }, [currentProject, selectedProjectId, activeSprintId, currentUser, dummyTasks, invalidate, addToast]);
 
   const handleCreateSprint = useCallback(() => {
     const newSprint: Sprint = {
@@ -222,32 +228,30 @@ export function useAppState() {
       name: `Sprint ${sprints.length + 1}`,
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: 'backlog',
+      status: 'planning',
     };
     apiFetch('/api/sprints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newSprint),
     }).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['init'] });
+      invalidate();
       setActiveSprintId(newSprint.id);
     }).catch(err => addToast(err.message));
-  }, [sprints.length, queryClient, setActiveSprintId, addToast]);
+  }, [sprints.length, invalidate, setActiveSprintId, addToast]);
 
   const handleUpdateProject = useCallback((updatedProject: Project) => {
     apiFetch(`/api/projects/${updatedProject.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedProject),
-    }).then(() => queryClient.invalidateQueries({ queryKey: ['init'] }))
-    .catch(err => addToast(err.message));
-  }, [queryClient, addToast]);
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
 
   const handleDeleteTask = useCallback((taskId: string) => {
     apiFetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
-      .then(() => queryClient.invalidateQueries({ queryKey: ['init'] }))
-      .catch(err => addToast(err.message));
-  }, [queryClient, addToast]);
+      .then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
 
   const handleCopyTask = useCallback((task: Task) => {
     const taskData = {
@@ -268,16 +272,106 @@ export function useAppState() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(taskData),
-    }).then(() => queryClient.invalidateQueries({ queryKey: ['init'] }))
-    .catch(err => addToast(err.message));
-  }, [currentUser, dummyTasks, queryClient, addToast]);
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [currentUser, dummyTasks, invalidate, addToast]);
+
+  const handleAddComment = useCallback((taskId: string, text: string) => {
+    apiFetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        taskId,
+        authorId: currentUser?.id,
+        text,
+        createdAt: new Date().toISOString(),
+      }),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [currentUser, invalidate, addToast]);
+
+  const handleUpdateComment = useCallback((commentId: string, text: string) => {
+    apiFetch(`/api/comments/${commentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleCreateProject = useCallback((project: Project) => {
+    apiFetch('/api/projects', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: project.id,
+        name: project.name,
+        color: project.color,
+        teamId: project.teamId || null,
+        leadId: project.leadId || null,
+        columns: project.columns,
+      }),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleDeleteProject = useCallback((id: string) => {
+    apiFetch(`/api/projects/${id}`, { method: 'DELETE' })
+      .then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleCreateTeam = useCallback((team: Team) => {
+    apiFetch('/api/teams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: team.id, name: team.name }),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleUpdateTeam = useCallback((teamId: string, memberIds: string[]) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return;
+    apiFetch(`/api/teams/${teamId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: team.name, memberIds }),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [teams, invalidate, addToast]);
+
+  const handleDeleteTeam = useCallback((id: string) => {
+    apiFetch(`/api/teams/${id}`, { method: 'DELETE' })
+      .then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleCreateMember = useCallback((member: Member) => {
+    apiFetch('/api/members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        avatar: member.avatar,
+        role: member.role,
+      }),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleUpdateMember = useCallback((id: string, updates: Partial<Member>) => {
+    apiFetch(`/api/members/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleDeleteMember = useCallback((id: string) => {
+    apiFetch(`/api/members/${id}`, { method: 'DELETE' })
+      .then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
 
   return {
-    tasks: dummyTasks, setTasks: (_value: unknown) => { queryClient.invalidateQueries({ queryKey: ['init'] }); },
-    projects, setProjects: (_value: unknown) => { queryClient.invalidateQueries({ queryKey: ['init'] }); },
-    sprints, setSprints: (_value: unknown) => { queryClient.invalidateQueries({ queryKey: ['init'] }); },
-    teams, setTeams: (_value: unknown) => { queryClient.invalidateQueries({ queryKey: ['init'] }); },
-    members, setMembers: (_value: unknown) => { queryClient.invalidateQueries({ queryKey: ['init'] }); },
+    tasks: dummyTasks, setTasks: invalidate,
+    projects, setProjects: invalidate,
+    sprints, setSprints: invalidate,
+    teams, setTeams: invalidate,
+    members, setMembers: invalidate,
     currentUser, setCurrentUser,
     activeSprintId, setActiveSprintId,
     activeView, setActiveView,
@@ -289,6 +383,10 @@ export function useAppState() {
     handleUpdateTask, handleTasksReorder, handleAddTask,
     handleCreateSprint, handleUpdateProject,
     handleDeleteTask, handleCopyTask,
+    handleCreateProject, handleDeleteProject,
+    handleCreateTeam, handleUpdateTeam, handleDeleteTeam,
+    handleCreateMember, handleUpdateMember, handleDeleteMember,
+    handleAddComment, handleUpdateComment,
     isLoading, error,
   };
 }

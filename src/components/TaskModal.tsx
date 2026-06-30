@@ -29,10 +29,12 @@ interface TaskModalProps {
   onUpdateTask: (task: Task) => void;
   onCopyTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  onAddComment: (taskId: string, text: string) => void;
+  onUpdateComment: (commentId: string, text: string) => void;
   currentUser: Member;
 }
 
-export function TaskModal({ task, projects, sprints, members, onClose, onUpdateTask, onCopyTask, onDeleteTask, currentUser }: TaskModalProps) {
+export function TaskModal({ task, projects, sprints, members, onClose, onUpdateTask, onCopyTask, onDeleteTask, onAddComment, onUpdateComment, currentUser }: TaskModalProps) {
   const [commentText, setCommentText] = useState('');
   const [showActivities, setShowActivities] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -121,17 +123,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
-    const newComment: Comment = {
-      id: crypto.randomUUID(),
-      author: currentUser,
-      text: commentText,
-      createdAt: 'Just now',
-    };
-    onUpdateTask({ 
-      ...task, 
-      comments: [newComment, ...task.comments],
-      activities: logActivity('added a comment')
-    });
+    onAddComment(task.id, commentText);
     setCommentText('');
   };
 
@@ -142,17 +134,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
 
   const handleSubmitReply = () => {
     if (!replyText.trim() || !replyingToId) return;
-    const newComment: Comment = {
-      id: crypto.randomUUID(),
-      author: currentUser,
-      text: replyText,
-      createdAt: 'Just now',
-    };
-    onUpdateTask({
-      ...task,
-      comments: [...task.comments, newComment],
-      activities: logActivity('replied to comment'),
-    });
+    onAddComment(task.id, replyText);
     setReplyingToId(null);
     setReplyText('');
   };
@@ -169,13 +151,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
 
   const handleSaveEdit = () => {
     if (!editText.trim() || !editingCommentId) return;
-    onUpdateTask({
-      ...task,
-      comments: task.comments.map(c =>
-        c.id === editingCommentId ? { ...c, text: editText } : c
-      ),
-      activities: logActivity('edited a comment'),
-    });
+    onUpdateComment(editingCommentId, editText);
     setEditingCommentId(null);
     setEditText('');
   };
@@ -227,10 +203,15 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                       setIsEditingProjectSprint(false);
                     }}
                   >
-                    <option value="">No Sprint</option>
-                    {sprints.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
+                    {[...sprints]
+                      .sort((a, b) => {
+                        if (a.status === 'backlog') return -1;
+                        if (b.status === 'backlog') return 1;
+                        return 0;
+                      })
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
                   </select>
                 </div>
               ) : (

@@ -65,7 +65,7 @@ export interface Sprint {
   name: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'completed' | 'backlog';
+  status: 'planning' | 'planned' | 'active' | 'completed' | 'backlog';
 }
 
 export interface FilterState {

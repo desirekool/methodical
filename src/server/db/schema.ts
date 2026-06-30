@@ -40,7 +40,7 @@ export const sprints = sqliteTable('sprints', {
   name: text('name').notNull(),
   startDate: text('start_date').notNull(),
   endDate: text('end_date').notNull(),
-  status: text('status', { enum: ['active', 'completed', 'backlog'] }).notNull().default('backlog'),
+  status: text('status', { enum: ['planning', 'planned', 'active', 'completed', 'backlog'] }).notNull().default('backlog'),
 });
 
 export const tasks = sqliteTable('tasks', {

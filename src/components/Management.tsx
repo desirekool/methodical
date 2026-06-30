@@ -7,24 +7,34 @@ interface ManagementProps {
   teams: Team[];
   projects: Project[];
   members: Member[];
-  onUpdateTeams: (teams: Team[]) => void;
-  onUpdateProjects: (projects: Project[]) => void;
-  onUpdateMembers: (members: Member[]) => void;
   currentUser: Member;
   activeTab: 'teams' | 'projects' | 'members';
   onTabChange: (tab: 'teams' | 'projects' | 'members') => void;
+  onCreateProject: (project: Project) => void;
+  onDeleteProject: (id: string) => void;
+  onCreateTeam: (team: Team) => void;
+  onUpdateTeam: (teamId: string, memberIds: string[]) => void;
+  onDeleteTeam: (id: string) => void;
+  onCreateMember: (member: Member) => void;
+  onUpdateMember: (id: string, updates: Partial<Member>) => void;
+  onDeleteMember: (id: string) => void;
 }
 
 export const Management: React.FC<ManagementProps> = ({
   teams,
   projects,
   members,
-  onUpdateTeams,
-  onUpdateProjects,
-  onUpdateMembers,
   currentUser,
   activeTab,
-  onTabChange
+  onTabChange,
+  onCreateProject,
+  onDeleteProject,
+  onCreateTeam,
+  onUpdateTeam,
+  onDeleteTeam,
+  onCreateMember,
+  onUpdateMember,
+  onDeleteMember,
 }) => {
   if (currentUser.role !== 'admin') {
     return (
@@ -41,36 +51,53 @@ export const Management: React.FC<ManagementProps> = ({
       <div className="px-8 py-6 border-b border-outline-variant/10">
         <h2 className="text-2xl font-bold text-on-surface mb-6">Management</h2>
         <div className="flex gap-4">
-          <TabButton 
-            active={activeTab === 'teams'} 
-            onClick={() => onTabChange('teams')} 
-            icon={<Users className="w-4 h-4" />} 
-            label="Teams" 
+          <TabButton
+            active={activeTab === 'teams'}
+            onClick={() => onTabChange('teams')}
+            icon={<Users className="w-4 h-4" />}
+            label="Teams"
           />
-          <TabButton 
-            active={activeTab === 'projects'} 
-            onClick={() => onTabChange('projects')} 
-            icon={<LayoutGrid className="w-4 h-4" />} 
-            label="Projects" 
+          <TabButton
+            active={activeTab === 'projects'}
+            onClick={() => onTabChange('projects')}
+            icon={<LayoutGrid className="w-4 h-4" />}
+            label="Projects"
           />
-          <TabButton 
-            active={activeTab === 'members'} 
-            onClick={() => onTabChange('members')} 
-            icon={<UserPlus className="w-4 h-4" />} 
-            label="Members" 
+          <TabButton
+            active={activeTab === 'members'}
+            onClick={() => onTabChange('members')}
+            icon={<UserPlus className="w-4 h-4" />}
+            label="Members"
           />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         {activeTab === 'teams' && (
-          <TeamsManager teams={teams} members={members} onUpdate={onUpdateTeams} />
+          <TeamsManager
+            teams={teams}
+            members={members}
+            onCreateTeam={onCreateTeam}
+            onUpdateTeam={onUpdateTeam}
+            onDeleteTeam={onDeleteTeam}
+          />
         )}
         {activeTab === 'projects' && (
-          <ProjectsManager projects={projects} teams={teams} members={members} onUpdate={onUpdateProjects} />
+          <ProjectsManager
+            projects={projects}
+            teams={teams}
+            members={members}
+            onCreateProject={onCreateProject}
+            onDeleteProject={onDeleteProject}
+          />
         )}
         {activeTab === 'members' && (
-          <MembersManager members={members} onUpdate={onUpdateMembers} />
+          <MembersManager
+            members={members}
+            onCreateMember={onCreateMember}
+            onUpdateMember={onUpdateMember}
+            onDeleteMember={onDeleteMember}
+          />
         )}
       </div>
     </div>
@@ -78,11 +105,11 @@ export const Management: React.FC<ManagementProps> = ({
 };
 
 const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
-  <button 
+  <button
     onClick={onClick}
     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-      active 
-        ? 'bg-primary text-on-primary shadow-md' 
+      active
+        ? 'bg-primary text-on-primary shadow-md'
         : 'text-on-surface-variant hover:bg-surface-container-high'
     }`}
   >
@@ -91,46 +118,47 @@ const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick:
   </button>
 );
 
-const TeamsManager = ({ teams, members, onUpdate }: { teams: Team[]; members: Member[]; onUpdate: (teams: Team[]) => void }) => {
+const TeamsManager = ({ teams, members, onCreateTeam, onUpdateTeam, onDeleteTeam }: {
+  teams: Team[]; members: Member[];
+  onCreateTeam: (team: Team) => void;
+  onUpdateTeam: (teamId: string, memberIds: string[]) => void;
+  onDeleteTeam: (id: string) => void;
+}) => {
   const [newTeamName, setNewTeamName] = useState('');
 
   const addTeam = () => {
     if (!newTeamName.trim()) return;
-    const newTeam: Team = {
+    onCreateTeam({
       id: crypto.randomUUID(),
       name: newTeamName,
-      memberIds: []
-    };
-    onUpdate([...teams, newTeam]);
+      memberIds: [],
+    });
     setNewTeamName('');
   };
 
   const removeTeam = (id: string) => {
-    onUpdate(teams.filter(t => t.id !== id));
+    onDeleteTeam(id);
   };
 
   const toggleMember = (teamId: string, memberId: string) => {
-    onUpdate(teams.map(t => {
-      if (t.id === teamId) {
-        const memberIds = t.memberIds.includes(memberId)
-          ? t.memberIds.filter(id => id !== memberId)
-          : [...t.memberIds, memberId];
-        return { ...t, memberIds };
-      }
-      return t;
-    }));
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return;
+    const memberIds = team.memberIds.includes(memberId)
+      ? team.memberIds.filter(id => id !== memberId)
+      : [...team.memberIds, memberId];
+    onUpdateTeam(teamId, memberIds);
   };
 
   return (
     <div className="max-w-4xl space-y-8">
       <div className="flex gap-4">
-        <input 
+        <input
           className="flex-1 bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary"
           placeholder="New team name..."
           value={newTeamName}
           onChange={(e) => setNewTeamName(e.target.value)}
         />
-        <button 
+        <button
           onClick={addTeam}
           className="bg-primary text-on-primary px-6 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-all"
         >
@@ -151,7 +179,7 @@ const TeamsManager = ({ teams, members, onUpdate }: { teams: Team[]; members: Me
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2">Members</p>
               <div className="flex flex-wrap gap-2">
                 {members.map(member => (
-                  <button 
+                  <button
                     key={member.id}
                     onClick={() => toggleMember(team.id, member.id)}
                     className={`flex items-center gap-2 px-2 py-1 rounded-full border text-[10px] font-bold transition-all ${
@@ -173,7 +201,11 @@ const TeamsManager = ({ teams, members, onUpdate }: { teams: Team[]; members: Me
   );
 };
 
-const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Project[]; teams: Team[]; members: Member[]; onUpdate: (projects: Project[]) => void }) => {
+const ProjectsManager = ({ projects, teams, members, onCreateProject, onDeleteProject }: {
+  projects: Project[]; teams: Team[]; members: Member[];
+  onCreateProject: (project: Project) => void;
+  onDeleteProject: (id: string) => void;
+}) => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColumns, setNewProjectColumns] = useState('To Do, In Progress, Done');
 
@@ -183,10 +215,10 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
     const columns = columnLabels.map((label, idx) => ({
       id: label.toLowerCase().replace(/\s+/g, '-'),
       label,
-      order: idx
+      order: idx,
     }));
 
-    const newProject: Project = {
+    onCreateProject({
       id: crypto.randomUUID(),
       name: newProjectName,
       color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
@@ -196,23 +228,22 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
         { id: 'todo', label: 'To Do', order: 0 },
         { id: 'in-progress', label: 'In Progress', order: 1 },
         { id: 'done', label: 'Done', order: 2 },
-      ]
-    };
-    onUpdate([...projects, newProject]);
+      ],
+    });
     setNewProjectName('');
     setNewProjectColumns('To Do, In Progress, Done');
   };
 
   const removeProject = (id: string) => {
-    onUpdate(projects.filter(p => p.id !== id));
+    onDeleteProject(id);
   };
 
   const updateProjectTeam = (projectId: string, teamId: string) => {
-    onUpdate(projects.map(p => p.id === projectId ? { ...p, teamId } : p));
+    // TODO: wire to PUT /api/projects/[id] when needed
   };
 
   const updateProjectLead = (projectId: string, leadId: string) => {
-    onUpdate(projects.map(p => p.id === projectId ? { ...p, leadId } : p));
+    // TODO: wire to PUT /api/projects/[id] when needed
   };
 
   return (
@@ -222,7 +253,7 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-on-surface-variant">Board Name</label>
-            <input 
+            <input
               className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary"
               placeholder="e.g. Marketing Campaign"
               value={newProjectName}
@@ -231,7 +262,7 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-on-surface-variant">Columns (comma separated)</label>
-            <input 
+            <input
               className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary"
               placeholder="To Do, In Progress, Done"
               value={newProjectColumns}
@@ -239,7 +270,7 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
             />
           </div>
         </div>
-        <button 
+        <button
           onClick={addProject}
           className="w-full bg-primary text-on-primary px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-md"
         >
@@ -263,7 +294,7 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
             <div className="flex items-center gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase">Team</label>
-                <select 
+                <select
                   value={project.teamId || ''}
                   onChange={(e) => updateProjectTeam(project.id, e.target.value)}
                   className="bg-surface-container-lowest border border-outline-variant/20 rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:border-primary"
@@ -276,7 +307,7 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase">Lead</label>
-                <select 
+                <select
                   value={project.leadId || ''}
                   onChange={(e) => updateProjectLead(project.id, e.target.value)}
                   className="bg-surface-container-lowest border border-outline-variant/20 rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:border-primary"
@@ -298,48 +329,52 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
   );
 };
 
-const MembersManager = ({ members, onUpdate }: { members: Member[]; onUpdate: (members: Member[]) => void }) => {
+const MembersManager = ({ members, onCreateMember, onUpdateMember, onDeleteMember }: {
+  members: Member[];
+  onCreateMember: (member: Member) => void;
+  onUpdateMember: (id: string, updates: Partial<Member>) => void;
+  onDeleteMember: (id: string) => void;
+}) => {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
 
   const addMember = () => {
     if (!newName.trim() || !newEmail.trim()) return;
-    const newMember: Member = {
+    onCreateMember({
       id: crypto.randomUUID(),
       name: newName,
       email: newEmail,
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newName)}&background=random`,
-      role: 'user'
-    };
-    onUpdate([...members, newMember]);
+      role: 'user',
+    });
     setNewName('');
     setNewEmail('');
   };
 
   const removeMember = (id: string) => {
-    onUpdate(members.filter(m => m.id !== id));
+    onDeleteMember(id);
   };
 
   const updateRole = (id: string, role: UserRole) => {
-    onUpdate(members.map(m => m.id === id ? { ...m, role } : m));
+    onUpdateMember(id, { role });
   };
 
   return (
     <div className="max-w-4xl space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input 
+        <input
           className="bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary"
           placeholder="Name..."
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
-        <input 
+        <input
           className="bg-surface-container-low border border-outline-variant/20 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary"
           placeholder="Email..."
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
         />
-        <button 
+        <button
           onClick={addMember}
           className="bg-primary text-on-primary px-6 py-2 rounded-xl text-sm font-bold hover:opacity-90 transition-all"
         >
@@ -358,7 +393,7 @@ const MembersManager = ({ members, onUpdate }: { members: Member[]; onUpdate: (m
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <select 
+              <select
                 value={member.role}
                 onChange={(e) => updateRole(member.id, e.target.value as UserRole)}
                 className="bg-surface-container-lowest border border-outline-variant/20 rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:border-primary"

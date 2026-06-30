@@ -40,6 +40,8 @@ interface BoardProps {
   onAddTask: (status: Status) => string;
   onDeleteTask: (taskId: string) => void;
   onCopyTask: (task: Task) => void;
+  onAddComment: (taskId: string, text: string) => void;
+  onUpdateComment: (commentId: string, text: string) => void;
   currentUser: Member;
 }
 
@@ -55,6 +57,8 @@ export function Board({
   onAddTask, 
   onDeleteTask,
   onCopyTask,
+  onAddComment,
+  onUpdateComment,
   currentUser 
 }: BoardProps) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -63,6 +67,8 @@ export function Board({
   const [originalStatus, setOriginalStatus] = useState<Status | null>(null);
   const [isManagingColumns, setIsManagingColumns] = useState(false);
   const [newColumnLabel, setNewColumnLabel] = useState('');
+  const [localTasks, setLocalTasks] = useState<{ tasks: Task[] } | null>(null);
+  const displayTasks = localTasks?.tasks ?? tasks;
 
   const columns = [...currentProject.columns].sort((a, b) => a.order - b.order);
   const isLead = currentUser.id === currentProject.leadId || currentUser.role === 'admin';
@@ -109,12 +115,12 @@ export function Board({
     })
   );
 
-  const selectedTask = tasks.find(t => t.id === selectedTaskId);
-  const activeTask = tasks.find(t => t.id === activeId);
+  const selectedTask = displayTasks.find(t => t.id === selectedTaskId);
+  const activeTask = displayTasks.find(t => t.id === activeId);
   const activeColumn = columns.find(c => c.id === activeId);
 
   function findContainer(id: string) {
-    const task = tasks.find(t => t.id === id);
+    const task = displayTasks.find(t => t.id === id);
     if (task) return task.status;
     return columns.find(c => c.id === id)?.id;
   }
@@ -127,7 +133,7 @@ export function Board({
       setActiveType('column');
     } else {
       setActiveType('task');
-      const task = tasks.find(t => t.id === active.id);
+      const task = displayTasks.find(t => t.id === active.id);
       if (task) setOriginalStatus(task.status);
     }
   }
@@ -148,25 +154,26 @@ export function Board({
       return;
     }
 
-    const activeIndex = tasks.findIndex(t => t.id === activeId);
-    const overIndex = tasks.findIndex(t => t.id === overId);
+    const activeIndex = displayTasks.findIndex(t => t.id === activeId);
+    const overIndex = displayTasks.findIndex(t => t.id === overId);
 
     let newIndex;
     if (columns.some(c => c.id === overId)) {
-      newIndex = tasks.length;
+      newIndex = displayTasks.length;
     } else {
-      const isBelowLastItem = over && overIndex === tasks.length - 1;
+      const isBelowLastItem = over && overIndex === displayTasks.length - 1;
       const modifier = isBelowLastItem ? 1 : 0;
-      newIndex = overIndex >= 0 ? overIndex + modifier : tasks.length;
+      newIndex = overIndex >= 0 ? overIndex + modifier : displayTasks.length;
     }
 
-    const newTasks = [...tasks];
+    const newTasks = [...displayTasks];
     newTasks[activeIndex] = { ...newTasks[activeIndex], status: overContainer as Status };
-    onTasksReorder(arrayMove(newTasks, activeIndex, newIndex));
+    setLocalTasks({ tasks: arrayMove(newTasks, activeIndex, newIndex) });
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    setLocalTasks(null);
     
     if (activeType === 'column') {
       if (over && active.id !== over.id) {
@@ -183,7 +190,7 @@ export function Board({
       }
     } else {
       const activeId = active.id as string;
-      const task = tasks.find(t => t.id === activeId);
+      const task = displayTasks.find(t => t.id === activeId);
 
       if (task && originalStatus && task.status !== originalStatus) {
         const columnLabel = columns.find(c => c.id === task.status)?.label;
@@ -207,11 +214,11 @@ export function Board({
       const overContainer = findContainer(overId);
 
       if (activeContainer && overContainer && activeContainer === overContainer) {
-        const activeIndex = tasks.findIndex(t => t.id === activeId);
-        const overIndex = tasks.findIndex(t => t.id === overId);
+        const activeIndex = displayTasks.findIndex(t => t.id === activeId);
+        const overIndex = displayTasks.findIndex(t => t.id === overId);
 
         if (activeIndex !== overIndex) {
-          onTasksReorder(arrayMove(tasks, activeIndex, overIndex));
+          onTasksReorder(arrayMove(displayTasks, activeIndex, overIndex));
         }
       }
     }
@@ -222,7 +229,7 @@ export function Board({
   }
 
   const handleUpdateStatus = (id: string, status: Status) => {
-    const task = tasks.find(t => t.id === id);
+    const task = displayTasks.find(t => t.id === id);
     if (task) {
       onUpdateTask({ ...task, status });
     }
@@ -279,7 +286,7 @@ export function Board({
               <Column 
                 key={column.id}
                 column={column}
-                tasks={tasks.filter(t => t.status === column.id)}
+                tasks={displayTasks.filter(t => t.status === column.id)}
                 projects={projects}
                 onTaskClick={setSelectedTaskId}
                 onAddTask={handleAddNewTask}
@@ -317,7 +324,7 @@ export function Board({
             <div className="w-80 opacity-90 scale-105 transition-transform">
               <Column 
                 column={activeColumn} 
-                tasks={tasks.filter(t => t.status === activeColumn.id)} 
+                tasks={displayTasks.filter(t => t.status === activeColumn.id)} 
                 projects={projects}
                 onTaskClick={() => {}}
                 onAddTask={() => {}}
@@ -339,6 +346,8 @@ export function Board({
             onUpdateTask={onUpdateTask}
             onDeleteTask={onDeleteTask}
             onCopyTask={onCopyTask}
+            onAddComment={onAddComment}
+            onUpdateComment={onUpdateComment}
             currentUser={currentUser}
           />
         )}
@@ -439,7 +448,7 @@ const Column: React.FC<ColumnProps> = ({
         strategy={verticalListSortingStrategy}
       >
         <div className="bg-surface-container-low rounded-2xl p-4 flex flex-col gap-4 min-h-[200px] border border-transparent hover:border-outline-variant/10 transition-colors">
-          {tasks.map(task => {
+          {tasks.length > 0 ? tasks.map(task => {
             const project = projects.find(p => p.id === task.projectId);
             return (
               <TaskCard 
@@ -452,7 +461,11 @@ const Column: React.FC<ColumnProps> = ({
                 availableStatuses={availableStatuses}
               />
             );
-          })}
+          }) : (
+            <div className="flex items-center justify-center flex-1 text-on-surface-variant/30 text-xs font-medium">
+              No tasks yet
+            </div>
+          )}
           
           {canAddTask && (
             <button 

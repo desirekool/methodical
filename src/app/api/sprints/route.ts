@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     name: body.name,
     startDate: body.startDate,
     endDate: body.endDate,
-    status: body.status || 'backlog',
+    status: body.status || 'planning',
   };
   db.insert(sprints).values(sprint).run();
   return NextResponse.json(sprint, { status: 201 });

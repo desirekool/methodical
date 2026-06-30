@@ -69,8 +69,10 @@ export const PROJECTS: Project[] = [
 ];
 
 export const SPRINTS: Sprint[] = [
+  { id: 'b_t1', name: 'Backlog', startDate: '2023-01-01', endDate: '2026-12-31', status: 'backlog' },
+  { id: 'b_t2', name: 'Backlog', startDate: '2023-01-01', endDate: '2026-12-31', status: 'backlog' },
   { id: 's1', name: 'Sprint 24', startDate: '2023-10-10', endDate: '2023-10-24', status: 'active' },
-  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'backlog' },
+  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'planned' },
 ];
 
 export const INITIAL_TASKS: Task[] = [
@@ -151,7 +153,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Document the new v4 endpoints for the mobile team.',
     status: 'todo',
     projectId: 'p1',
-    sprintId: undefined, // No sprint = Backlog
+    sprintId: 'b_t1',
     points: 2,
     category: 'Engineering',
     labels: ['Documentation'],

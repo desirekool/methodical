@@ -11,6 +11,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:api": "vitest run --config vitest.api.config.ts",
+    "test:coverage": "vitest run --coverage",
+    "test:api:coverage": "vitest run --coverage --config vitest.api.config.ts",
+    "test:all:coverage": "npm run test:coverage && npm run test:api:coverage",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/server/db/seed.ts"
   },
@@ -37,6 +40,7 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.9",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.26.0",
     "eslint-config-next": "^16.2.4",

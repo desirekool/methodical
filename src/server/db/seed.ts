@@ -12,7 +12,21 @@ import {
   comments as commentsTable,
   activities as activitiesTable,
 } from './schema';
-import { MEMBERS, TEAMS, PROJECTS, SPRINTS, INITIAL_TASKS } from '../../constants';
+import { MEMBERS, TEAMS, PROJECTS, INITIAL_TASKS } from '../../constants';
+
+function getBacklogSprints() {
+  const now = new Date();
+  const farFuture = new Date(now.getFullYear() + 10, 0, 1);
+  const start = now.toISOString().split('T')[0];
+  const end = farFuture.toISOString().split('T')[0];
+  return TEAMS.map(t => ({
+    id: `b_${t.id}`,
+    name: 'Backlog',
+    startDate: start,
+    endDate: end,
+    status: 'backlog' as const,
+  }));
+}
 
 const seedMembers = MEMBERS.map((m) => ({
   id: m.id,
@@ -51,13 +65,12 @@ const seedColumns = PROJECTS.flatMap((p) =>
   }))
 );
 
-const seedSprints = SPRINTS.map((s) => ({
-  id: s.id,
-  name: s.name,
-  startDate: s.startDate,
-  endDate: s.endDate,
-  status: s.status,
-}));
+const seedBacklogSprints = getBacklogSprints();
+const seedRegularSprints = [
+  { id: 's1', name: 'Sprint 24', startDate: '2023-10-10', endDate: '2023-10-24', status: 'active' as const },
+  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'planned' as const },
+];
+const seedSprints = [...seedBacklogSprints, ...seedRegularSprints];
 
 const seedTasks = INITIAL_TASKS.map((t, i) => ({
   id: t.id,
