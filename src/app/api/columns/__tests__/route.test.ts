@@ -2,7 +2,15 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { reseed } from '../../../../test/api-setup';
 
-beforeAll(() => reseed());
+let POST: any, PUT: any, DELETE: any;
+
+beforeAll(async () => {
+  reseed();
+  const mod = await import('../route');
+  POST = mod.POST;
+  PUT = mod.PUT;
+  DELETE = mod.DELETE;
+});
 
 describe('POST /api/columns', () => {
   it('creates a new column', async () => {

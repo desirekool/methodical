@@ -2,7 +2,14 @@ import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { reseed } from '../../../../test/api-setup';
 
-beforeAll(() => reseed());
+let GET: any, POST: any;
+
+beforeAll(async () => {
+  reseed();
+  const mod = await import('../route');
+  GET = mod.GET;
+  POST = mod.POST;
+});
 
 describe('GET /api/tasks', () => {
   it('returns all tasks', async () => {

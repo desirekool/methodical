@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { reseed } from '../../../../test/api-setup';
-import { GET } from '../route';
 
-beforeAll(() => reseed());
+let GET: any;
+
+beforeAll(async () => {
+  reseed();
+  const mod = await import('../route');
+  GET = mod.GET;
+});
 
 describe('GET /api/init', () => {
   it('returns all entities needed for app bootstrap', async () => {
