@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutGrid, Users, Settings, Bell, Search, Plus, Shield, LogOut, ChevronDown, CheckSquare, UserPlus } from 'lucide-react';
+import Image from 'next/image';
 import { Member, Project } from '../types';
 
 interface LayoutProps {
@@ -14,6 +15,8 @@ interface LayoutProps {
   activeView: 'board' | 'management' | 'boards-list';
   setActiveView: (view: 'board' | 'management' | 'boards-list') => void;
   currentProject?: Project;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
 }
 
 export function Layout({ 
@@ -27,7 +30,9 @@ export function Layout({
   members,
   activeView,
   setActiveView,
-  currentProject
+  currentProject,
+  searchValue,
+  onSearchChange
 }: LayoutProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -51,11 +56,13 @@ export function Layout({
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/20">
             <Search className="text-on-surface-variant w-4 h-4 mr-2" />
-            <input 
-              className="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-on-surface-variant/50" 
-              placeholder="Search..." 
-              type="text"
-            />
+<input 
+  className="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-on-surface-variant/50" 
+  placeholder="Search..." 
+  type="text"
+  value={searchValue}
+  onChange={(e) => onSearchChange(e.target.value)}
+/>
           </div>
           <div className="relative">
             <button 
@@ -124,12 +131,8 @@ export function Layout({
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-2 p-1 hover:bg-surface-container-high rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/20">
-                <img 
-                  alt={currentUser.name} 
-                  src={currentUser.avatar}
-                  referrerPolicy="no-referrer"
-                />
+              <div className="relative w-8 h-8 rounded-full overflow-hidden border border-outline-variant/20">
+                <Image alt={currentUser.name} src={currentUser.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
               </div>
               <ChevronDown className="w-4 h-4 text-on-surface-variant" />
             </button>
@@ -151,7 +154,7 @@ export function Layout({
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-container-low transition-colors"
                     >
-                      <img src={member.avatar} className="w-6 h-6 rounded-full" alt={member.name} referrerPolicy="no-referrer" />
+                      <Image src={member.avatar} alt={member.name} width={24} height={24} className="rounded-full" referrerPolicy="no-referrer" />
                       <span className="text-xs font-medium text-on-surface">{member.name}</span>
                       {member.role === 'admin' && <Shield className="w-3 h-3 text-primary" />}
                     </button>

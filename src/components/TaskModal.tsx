@@ -16,6 +16,8 @@ import {
   Zap
 } from 'lucide-react';
 import { Task, ChecklistItem, Comment, Activity, Project, Sprint, Member } from '../types';
+import { createActivity } from '../utils/activity';
+import Image from 'next/image';
 import React, { useState } from 'react';
 
 interface TaskModalProps {
@@ -25,10 +27,12 @@ interface TaskModalProps {
   members: Member[];
   onClose: () => void;
   onUpdateTask: (task: Task) => void;
+  onCopyTask: (task: Task) => void;
+  onDeleteTask: (taskId: string) => void;
   currentUser: Member;
 }
 
-export function TaskModal({ task, projects, sprints, members, onClose, onUpdateTask, currentUser }: TaskModalProps) {
+export function TaskModal({ task, projects, sprints, members, onClose, onUpdateTask, onCopyTask, onDeleteTask, currentUser }: TaskModalProps) {
   const [commentText, setCommentText] = useState('');
   const [showActivities, setShowActivities] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -42,6 +46,10 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [isAddingLabel, setIsAddingLabel] = useState(false);
   const [isAddingChecklistItem, setIsAddingChecklistItem] = useState(false);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   const completedCount = task.checklist.filter(i => i.completed).length;
   const progress = task.checklist.length > 0 ? Math.round((completedCount / task.checklist.length) * 100) : 0;
@@ -50,14 +58,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
   const currentSprint = sprints.find(s => s.id === task.sprintId);
 
   const logActivity = (action: string, target?: string) => {
-    const newActivity: Activity = {
-      id: Math.random().toString(36).substr(2, 9),
-      user: currentUser,
-      action,
-      target,
-      timestamp: 'Just now',
-    };
-    return [newActivity, ...(task.activities || [])];
+    return [createActivity(currentUser, action, target), ...(task.activities || [])];
   };
 
   const toggleChecklistItem = (itemId: string) => {
@@ -75,7 +76,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
   const handleAddChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
     const newItem: ChecklistItem = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       text: newChecklistItem,
       completed: false,
     };
@@ -121,7 +122,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
   const handleAddComment = () => {
     if (!commentText.trim()) return;
     const newComment: Comment = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       author: currentUser,
       text: commentText,
       createdAt: 'Just now',
@@ -132,6 +133,56 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
       activities: logActivity('added a comment')
     });
     setCommentText('');
+  };
+
+  const handleStartReply = (commentId: string, authorName: string) => {
+    setReplyingToId(commentId);
+    setReplyText(`@${authorName} `);
+  };
+
+  const handleSubmitReply = () => {
+    if (!replyText.trim() || !replyingToId) return;
+    const newComment: Comment = {
+      id: crypto.randomUUID(),
+      author: currentUser,
+      text: replyText,
+      createdAt: 'Just now',
+    };
+    onUpdateTask({
+      ...task,
+      comments: [...task.comments, newComment],
+      activities: logActivity('replied to comment'),
+    });
+    setReplyingToId(null);
+    setReplyText('');
+  };
+
+  const handleCancelReply = () => {
+    setReplyingToId(null);
+    setReplyText('');
+  };
+
+  const handleStartEdit = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditText(comment.text);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editText.trim() || !editingCommentId) return;
+    onUpdateTask({
+      ...task,
+      comments: task.comments.map(c =>
+        c.id === editingCommentId ? { ...c, text: editText } : c
+      ),
+      activities: logActivity('edited a comment'),
+    });
+    setEditingCommentId(null);
+    setEditText('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditText('');
   };
 
   return (
@@ -360,11 +411,11 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {task.attachments.map(attachment => (
                 <div key={attachment.id} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl group cursor-pointer hover:bg-surface-container-high transition-colors border border-transparent hover:border-outline-variant/20">
-                  <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-outline-variant/10 overflow-hidden">
+                  <div className="relative w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-outline-variant/10 overflow-hidden">
                     {attachment.type === 'pdf' ? (
                       <FileText className="w-6 h-6 text-primary" />
                     ) : (
-                      <img src={attachment.url} alt={attachment.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <Image src={attachment.url} alt={attachment.name} fill className="object-cover" referrerPolicy="no-referrer" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -392,12 +443,8 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
             </div>
             
             <div className="flex gap-4 mb-8">
-              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                <img 
-                  alt={currentUser.name} 
-                  src={currentUser.avatar}
-                  referrerPolicy="no-referrer"
-                />
+              <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
+                <Image alt={currentUser.name} src={currentUser.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="flex-1">
                 <div className="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden">
@@ -424,18 +471,14 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                 <div className="space-y-4">
                   {(task.activities || []).map(activity => (
                     <div key={activity.id} className="flex gap-4 items-start">
-                      <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 mt-1">
-                        <img 
-                          alt={activity.user.name} 
-                          src={activity.user.avatar}
-                          referrerPolicy="no-referrer"
-                        />
+                      <div className="relative w-6 h-6 rounded-full overflow-hidden shrink-0 mt-1">
+                        <Image alt={activity.user.name} src={activity.user.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1">
                         <p className="text-xs text-on-surface">
                           <span className="font-bold">{activity.user.name}</span>
                           {' '}{activity.action}{' '}
-                          {activity.target && <span className="font-bold">"{activity.target}"</span>}
+                           {activity.target && <span className="font-bold">{`\u201C${activity.target}\u201D`}</span>}
                         </p>
                         <span className="text-[10px] text-on-surface-variant">{activity.timestamp}</span>
                       </div>
@@ -445,25 +488,83 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
               ) : (
                 task.comments.map(comment => (
                   <div key={comment.id} className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                      <img 
-                        alt={comment.author.name} 
-                        src={comment.author.avatar}
-                        referrerPolicy="no-referrer"
-                      />
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
+                      <Image alt={comment.author.name} src={comment.author.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2 mb-1">
                         <span className="text-xs font-bold text-on-surface">{comment.author.name}</span>
                         <span className="text-[10px] text-on-surface-variant">{comment.createdAt}</span>
                       </div>
-                      <div className="text-sm text-on-surface-variant leading-relaxed">
-                        {comment.text}
-                      </div>
+                      
+                      {editingCommentId === comment.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            className="w-full bg-surface-container-low border border-primary rounded-lg p-2 text-sm focus:outline-none min-h-[60px] resize-none"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSaveEdit}
+                              className="bg-primary text-on-primary px-3 py-1 rounded-lg text-[10px] font-bold"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-3 py-1 rounded-lg text-[10px] font-bold text-on-surface-variant hover:bg-surface-container-high"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-on-surface-variant leading-relaxed">
+                          {comment.text}
+                        </div>
+                      )}
+
                       <div className="flex gap-4 mt-2">
-                        <button className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface">Reply</button>
-                        <button className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface">Edit</button>
+                        <button
+                          onClick={() => handleStartReply(comment.id, comment.author.name)}
+                          className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface"
+                        >
+                          Reply
+                        </button>
+                        <button
+                          onClick={() => handleStartEdit(comment)}
+                          className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface"
+                        >
+                          Edit
+                        </button>
                       </div>
+
+                      {replyingToId === comment.id && (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            className="w-full bg-surface-container-low border border-primary rounded-lg p-2 text-sm focus:outline-none min-h-[60px] resize-none"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSubmitReply}
+                              className="bg-primary text-on-primary px-3 py-1 rounded-lg text-[10px] font-bold"
+                            >
+                              Reply
+                            </button>
+                            <button
+                              onClick={handleCancelReply}
+                              className="px-3 py-1 rounded-lg text-[10px] font-bold text-on-surface-variant hover:bg-surface-container-high"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -531,7 +632,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                             setIsEditingAssignee(false);
                           }}
                         >
-                          <img src={member.avatar} alt={member.name} className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
+                          <Image src={member.avatar} alt={member.name} width={24} height={24} className="rounded-full" referrerPolicy="no-referrer" />
                           <span className="text-xs font-bold">{member.name}</span>
                         </button>
                       ))}
@@ -544,7 +645,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                   >
                     {task.assignee ? (
                       <>
-                        <img className="w-8 h-8 rounded-full" src={task.assignee.avatar} alt={task.assignee.name} referrerPolicy="no-referrer" />
+                        <Image className="rounded-full" src={task.assignee.avatar} alt={task.assignee.name} width={32} height={32} referrerPolicy="no-referrer" />
                         <div className="flex flex-col">
                           <span className="text-xs font-bold">{task.assignee.name}</span>
                           <span className="text-[10px] text-on-surface-variant">Click to change</span>
@@ -565,7 +666,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
               <div>
                 <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">Creator</h4>
                 <div className="flex items-center gap-3 p-2 opacity-70">
-                  <img className="w-8 h-8 rounded-full" src={task.creator.avatar} alt={task.creator.name} referrerPolicy="no-referrer" />
+                  <Image className="rounded-full" src={task.creator.avatar} alt={task.creator.name} width={32} height={32} referrerPolicy="no-referrer" />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold">{task.creator.name}</span>
                     <span className="text-[10px] text-on-surface-variant">Original author</span>
@@ -685,10 +786,10 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
             <div>
               <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">Actions</h4>
               <div className="space-y-2">
-                <ActionButton icon={<ArrowRight className="w-3 h-3" />} label="Move" />
-                <ActionButton icon={<Copy className="w-3 h-3" />} label="Copy" />
-                <ActionButton icon={<Archive className="w-3 h-3" />} label="Archive" />
-                <ActionButton icon={<Trash2 className="w-3 h-3" />} label="Delete" variant="danger" />
+                <ActionButton icon={<ArrowRight className="w-3 h-3" />} label="Move" onClick={() => setIsEditingStatus(true)} />
+                <ActionButton icon={<Copy className="w-3 h-3" />} label="Copy" onClick={() => { onCopyTask(task); onClose(); }} />
+                <ActionButton icon={<Archive className="w-3 h-3" />} label="Archive" onClick={() => onUpdateTask({ ...task, activities: logActivity('archived this task') })} />
+                <ActionButton icon={<Trash2 className="w-3 h-3" />} label="Delete" variant="danger" onClick={() => { onDeleteTask(task.id); onClose(); }} />
               </div>
             </div>
           </div>
@@ -698,9 +799,9 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
   );
 }
 
-function ActionButton({ icon, label, variant = 'default' }: { icon: React.ReactNode; label: string; variant?: 'default' | 'danger' }) {
+function ActionButton({ icon, label, onClick, variant = 'default' }: { icon: React.ReactNode; label: string; onClick?: () => void; variant?: 'default' | 'danger' }) {
   return (
-    <button className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-colors border ${
+    <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition-colors border ${
       variant === 'danger' 
         ? 'bg-error-container/10 text-error border-error/10 hover:bg-error/10' 
         : 'bg-surface-container-lowest text-on-surface border-outline-variant/10 hover:bg-primary/5'

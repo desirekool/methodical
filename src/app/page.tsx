@@ -1,136 +1,52 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { Board } from '../components/Board';
 import { FilterBar } from '../components/FilterBar';
 import { Management } from '../components/Management';
-import { INITIAL_TASKS, MEMBERS, PROJECTS, SPRINTS, TEAMS } from '../constants';
-import { Task, Status, Project, Sprint, FilterState, Team, Member } from '../types';
 import { Plus } from 'lucide-react';
+import { useAppState } from '../hooks/useAppState';
 
 export default function App() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [projects, setProjects] = useState<Project[]>(PROJECTS);
-  const [sprints, setSprints] = useState<Sprint[]>(SPRINTS);
-  const [teams, setTeams] = useState<Team[]>(TEAMS);
-  const [members, setMembers] = useState<Member[]>(MEMBERS);
-  const [currentUser, setCurrentUser] = useState<Member>(MEMBERS[0]); // Default to Marcus (Admin)
+  const {
+    currentUser, setCurrentUser,
+    members, setMembers,
+    activeView, setActiveView,
+    managementTab, setManagementTab,
+    currentProject,
+    filters, setFilters,
+    projects, setProjects,
+    allCategories, allLabels,
+    filteredTasks,
+    sprints,
+    selectedProjectId, setSelectedProjectId,
+    activeSprintId, setActiveSprintId,
+    tasks, setTasks,
+    teams, setTeams,
+    visibleProjects,
+    handleUpdateTask, handleAddTask,
+    handleCreateSprint, handleUpdateProject,
+    handleDeleteTask, handleCopyTask,
+    isLoading, error,
+  } = useAppState();
 
-  const [activeSprintId, setActiveSprintId] = useState<string | 'backlog'>(SPRINTS[0].id);
-  const [activeView, setActiveView] = useState<'board' | 'management' | 'boards-list'>('board');
-  const [managementTab, setManagementTab] = useState<'teams' | 'projects' | 'members'>('teams');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(PROJECTS[0].id);
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-screen bg-surface">
+      <p className="text-on-surface-variant">Loading...</p>
+    </div>
+  );
 
-  const [filters, setFilters] = useState<FilterState>({
-    search: '',
-    projectIds: [],
-    memberIds: [],
-    categories: [],
-    labels: [],
-  });
+  if (error) return (
+    <div className="flex items-center justify-center min-h-screen bg-surface">
+      <p className="text-on-surface-variant">Failed to load data</p>
+    </div>
+  );
 
-  const currentProject = projects.find(p => p.id === selectedProjectId);
-  const currentTeam = teams.find(t => t.id === currentProject?.teamId);
-
-  // RBAC: Filter projects/boards based on user role and team membership
-  const visibleProjects = useMemo(() => {
-    if (currentUser.role === 'admin') return projects;
-    const userTeams = teams.filter(t => t.memberIds.includes(currentUser.id)).map(t => t.id);
-    return projects.filter(p => p.teamId && userTeams.includes(p.teamId));
-  }, [projects, teams, currentUser]);
-
-  const allCategories = useMemo(() => Array.from(new Set(tasks.map(t => t.category))), [tasks]);
-  const allLabels = useMemo(() => Array.from(new Set(tasks.flatMap(t => t.labels))), [tasks]);
-
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
-      // Sprint filter
-      if (activeSprintId === 'backlog') {
-        if (task.sprintId) return false;
-      } else {
-        if (task.sprintId !== activeSprintId) return false;
-      }
-
-      // Project filter (only show tasks for the selected project/board)
-      if (task.projectId !== selectedProjectId) return false;
-
-      // Search filter
-      if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase()) && !task.description.toLowerCase().includes(filters.search.toLowerCase())) {
-        return false;
-      }
-
-      // FilterBar Project filter (additional filtering within the board)
-      if (filters.projectIds.length > 0 && !filters.projectIds.includes(task.projectId)) {
-        return false;
-      }
-
-      // Member filter (now Assignee filter)
-      if (filters.memberIds.length > 0 && (!task.assignee || !filters.memberIds.includes(task.assignee.id))) {
-        return false;
-      }
-
-      // Category filter
-      if (filters.categories.length > 0 && !filters.categories.includes(task.category)) {
-        return false;
-      }
-
-      // Labels filter
-      if (filters.labels.length > 0 && !task.labels.some(l => filters.labels.includes(l))) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [tasks, activeSprintId, filters, selectedProjectId]);
-
-  const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-  };
-
-  const handleTasksReorder = (newTasks: Task[]) => {
-    setTasks(newTasks);
-  };
-
-  const handleAddTask = (status?: Status) => {
-    const defaultStatus = currentProject?.columns[0]?.id || 'todo';
-    const newTask: Task = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: 'New Task',
-      description: 'Enter description here...',
-      status: status || defaultStatus,
-      projectId: selectedProjectId,
-      sprintId: activeSprintId === 'backlog' ? undefined : activeSprintId,
-      points: 0,
-      category: 'Engineering',
-      labels: ['New'],
-      creator: currentUser,
-      assignee: currentUser,
-      dueDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      checklist: [],
-      attachments: [],
-      comments: [],
-      activities: [],
-    };
-    setTasks(prev => [...prev, newTask]);
-    return newTask.id;
-  };
-
-  const handleCreateSprint = () => {
-    const newSprint: Sprint = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: `Sprint ${sprints.length + 1}`,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: 'backlog'
-    };
-    setSprints([...sprints, newSprint]);
-    setActiveSprintId(newSprint.id);
-  };
-
-  const handleUpdateProject = (updatedProject: Project) => {
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-  };
+  if (!currentProject) return (
+    <div className="flex items-center justify-center min-h-screen bg-surface">
+      <p className="text-on-surface-variant">No project selected</p>
+    </div>
+  );
 
   return (
     <Layout 
@@ -156,6 +72,8 @@ export default function App() {
       activeView={activeView}
       setActiveView={setActiveView}
       currentProject={currentProject}
+      searchValue={filters.search}
+      onSearchChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
     >
       {activeView === 'board' && (
         <div className="flex flex-col h-full">
@@ -212,6 +130,8 @@ export default function App() {
               setTasks([...otherTasks, ...newTasks]);
             }} 
             onAddTask={handleAddTask}
+            onDeleteTask={handleDeleteTask}
+            onCopyTask={handleCopyTask}
             currentUser={currentUser}
           />
         </div>

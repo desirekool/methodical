@@ -6,3 +6,14 @@ coverage/
 *.log
 .env*
 !.env.example
+.next/
+.idea/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/.planning/
+
+# Root markdown docs (project manifests, not README)
+/*.md
+!/README.md

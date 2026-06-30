@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Task, Status, Activity, Project, Sprint, Member } from '../types';
+import { createActivity } from '../utils/activity';
 import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import {
@@ -37,6 +38,8 @@ interface BoardProps {
   onUpdateProject: (project: Project) => void;
   onTasksReorder: (tasks: Task[]) => void;
   onAddTask: (status: Status) => string;
+  onDeleteTask: (taskId: string) => void;
+  onCopyTask: (task: Task) => void;
   currentUser: Member;
 }
 
@@ -50,6 +53,8 @@ export function Board({
   onUpdateProject,
   onTasksReorder, 
   onAddTask, 
+  onDeleteTask,
+  onCopyTask,
   currentUser 
 }: BoardProps) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -93,17 +98,6 @@ export function Board({
     });
   };
 
-  const logActivity = (task: Task, action: string, target?: string) => {
-    const newActivity: Activity = {
-      id: Math.random().toString(36).substr(2, 9),
-      user: currentUser,
-      action,
-      target,
-      timestamp: 'Just now',
-    };
-    return [newActivity, ...(task.activities || [])];
-  };
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -144,10 +138,10 @@ export function Board({
     const { active, over } = event;
     if (!over) return;
 
-    const activeId = active.id as string;
+    const dragId = active.id as string;
     const overId = over.id as string;
 
-    const activeContainer = findContainer(activeId);
+    const activeContainer = findContainer(dragId);
     const overContainer = findContainer(overId);
 
     if (!activeContainer || !overContainer || activeContainer === overContainer) {
@@ -195,7 +189,7 @@ export function Board({
         const columnLabel = columns.find(c => c.id === task.status)?.label;
         const updatedTask = {
           ...task,
-          activities: logActivity(task, 'moved to', columnLabel)
+          activities: [createActivity(currentUser, 'moved to', columnLabel), ...(task.activities || [])]
         };
         onUpdateTask(updatedTask);
       }
@@ -343,6 +337,8 @@ export function Board({
             members={members}
             onClose={() => setSelectedTaskId(null)} 
             onUpdateTask={onUpdateTask}
+            onDeleteTask={onDeleteTask}
+            onCopyTask={onCopyTask}
             currentUser={currentUser}
           />
         )}

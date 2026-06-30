@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Team, Project, Member, UserRole } from '../types';
+import Image from 'next/image';
 import { Plus, Trash2, Users, LayoutGrid, UserPlus, Shield } from 'lucide-react';
 
 interface ManagementProps {
@@ -96,7 +97,7 @@ const TeamsManager = ({ teams, members, onUpdate }: { teams: Team[]; members: Me
   const addTeam = () => {
     if (!newTeamName.trim()) return;
     const newTeam: Team = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: newTeamName,
       memberIds: []
     };
@@ -159,7 +160,7 @@ const TeamsManager = ({ teams, members, onUpdate }: { teams: Team[]; members: Me
                         : 'bg-surface-container-lowest border-outline-variant/20 text-on-surface-variant'
                     }`}
                   >
-                    <img src={member.avatar} className="w-4 h-4 rounded-full" alt={member.name} referrerPolicy="no-referrer" />
+                    <Image src={member.avatar} alt={member.name} width={16} height={16} className="rounded-full" referrerPolicy="no-referrer" />
                     {member.name}
                   </button>
                 ))}
@@ -186,9 +187,9 @@ const ProjectsManager = ({ projects, teams, members, onUpdate }: { projects: Pro
     }));
 
     const newProject: Project = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: newProjectName,
-      color: '#' + Math.floor(Math.random()*16777215).toString(16),
+      color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
       teamId: teams[0]?.id,
       leadId: members[0]?.id,
       columns: columns.length > 0 ? columns : [
@@ -304,7 +305,7 @@ const MembersManager = ({ members, onUpdate }: { members: Member[]; onUpdate: (m
   const addMember = () => {
     if (!newName.trim() || !newEmail.trim()) return;
     const newMember: Member = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: newName,
       email: newEmail,
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newName)}&background=random`,
@@ -350,7 +351,7 @@ const MembersManager = ({ members, onUpdate }: { members: Member[]; onUpdate: (m
         {members.map(member => (
           <div key={member.id} className="bg-surface-container-low rounded-2xl p-4 flex items-center justify-between border border-outline-variant/10">
             <div className="flex items-center gap-4">
-              <img src={member.avatar} className="w-10 h-10 rounded-full" alt={member.name} referrerPolicy="no-referrer" />
+              <Image src={member.avatar} alt={member.name} width={40} height={40} className="rounded-full" referrerPolicy="no-referrer" />
               <div>
                 <h3 className="font-bold text-on-surface">{member.name}</h3>
                 <p className="text-xs text-on-surface-variant">{member.email}</p>

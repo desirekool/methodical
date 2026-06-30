@@ -2,6 +2,7 @@ import React from 'react';
 import { MessageSquare, Paperclip, ArrowRight } from 'lucide-react';
 import { Task, Status } from '../types';
 import { useSortable } from '@dnd-kit/sortable';
+import Image from 'next/image';
 import { CSS } from '@dnd-kit/utilities';
 
 interface TaskCardProps {
@@ -83,21 +84,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, projectName, projectCo
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {task.assignee && (
-            <div className="w-6 h-6 rounded-full border-2 border-surface-container-lowest overflow-hidden" title={`Assigned to ${task.assignee.name}`}>
-              <img 
-                alt={task.assignee.name} 
-                src={task.assignee.avatar}
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            <div className="relative w-6 h-6 rounded-full border-2 border-surface-container-lowest overflow-hidden" title={`Assigned to ${task.assignee.name}`}>
+                <Image alt={task.assignee.name} src={task.assignee.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+              </div>
           )}
-          <div className="w-4 h-4 rounded-full border border-surface-container-lowest overflow-hidden opacity-50" title={`Created by ${task.creator.name}`}>
-            <img 
-              alt={task.creator.name} 
-              src={task.creator.avatar}
-              referrerPolicy="no-referrer"
-            />
-          </div>
+          <div className="relative w-4 h-4 rounded-full border border-surface-container-lowest overflow-hidden opacity-50" title={`Created by ${task.creator.name}`}>
+                <Image alt={task.creator.name} src={task.creator.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+              </div>
         </div>
         
         <div className="flex items-center gap-3 text-on-surface-variant">

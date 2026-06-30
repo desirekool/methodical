@@ -89,6 +89,7 @@ export interface Task {
   creator: Member;
   assignee?: Member;
   dueDate: string;
+  order: number;
   checklist: ChecklistItem[];
   attachments: Attachment[];
   comments: Comment[];
