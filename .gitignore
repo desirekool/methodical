@@ -11,6 +11,7 @@ coverage/
 *.db-wal
 *.db-shm
 /.planning/
+.env
 
 # Root markdown docs (project manifests, not README)
 /*.md
