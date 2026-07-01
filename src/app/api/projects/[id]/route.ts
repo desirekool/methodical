@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/server/db';
-import { projects } from '@/server/db/schema';
+import { projects, columns } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function PUT(
@@ -22,4 +22,19 @@ export async function PUT(
 
   const updated = db.select().from(projects).where(eq(projects.id, id)).get();
   return NextResponse.json(updated);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  const existing = db.select().from(projects).where(eq(projects.id, id)).get();
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  db.delete(columns).where(eq(columns.projectId, id)).run();
+  db.delete(projects).where(eq(projects.id, id)).run();
+
+  return NextResponse.json({ success: true });
 }

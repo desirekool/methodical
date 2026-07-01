@@ -32,18 +32,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ...project, columns: cols }, { status: 201 });
 }
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-
-  const existing = db.select().from(projectsTable).where(eq(projectsTable.id, id)).get();
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  db.delete(columnsTable).where(eq(columnsTable.projectId, id)).run();
-  db.delete(projectsTable).where(eq(projectsTable.id, id)).run();
-
-  return NextResponse.json({ success: true });
-}

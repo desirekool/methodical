@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { reseed } from '../../../../test/api-setup';
+import { reseed } from '../../api-setup';
 
 let POST: any, PUT: any, DELETE: any;
 
 beforeAll(async () => {
   reseed();
-  const mod = await import('../route');
+  const mod = await import('@/app/api/columns/route');
   POST = mod.POST;
   PUT = mod.PUT;
   DELETE = mod.DELETE;

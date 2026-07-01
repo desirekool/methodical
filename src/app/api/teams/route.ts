@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     startDate: now.toISOString().split('T')[0],
     endDate: farFuture.toISOString().split('T')[0],
     status: 'backlog' as const,
+    teamId,
   };
   db.insert(sprints).values(backlogSprint).run();
 

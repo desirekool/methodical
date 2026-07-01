@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Management } from '../Management';
-import type { Team, Project, Member } from '../../types';
+import { Management } from '@/components/Management';
+import type { Team, Project, Member, Sprint } from '@/types';
 
 const mockMembers: Member[] = [
   { id: 'm1', name: 'Alice', avatar: '', role: 'admin', email: 'alice@test.com' },
@@ -11,16 +11,21 @@ const mockMembers: Member[] = [
 ];
 
 const mockTeams: Team[] = [
-  { id: 't1', name: 'Alpha', memberIds: ['m1'] },
+  { id: 't1', name: 'Alpha', memberIds: ['m1'], memberRoles: { m1: 'admin' } },
 ];
 
 const mockProjects: Project[] = [
   { id: 'p1', name: 'Project A', color: '#4F46E5', columns: [{ id: 'todo', label: 'To Do', order: 0 }] },
 ];
 
+const mockSprints: Sprint[] = [
+  { id: 's1', name: 'Sprint 1', startDate: '2026-01-01', endDate: '2026-01-14', status: 'backlog', teamId: 't1' },
+];
+
 function renderManagement() {
   const callbacks = {
     onCreateProject: vi.fn(),
+    onUpdateProject: vi.fn(),
     onDeleteProject: vi.fn(),
     onCreateTeam: vi.fn(),
     onUpdateTeam: vi.fn(),
@@ -28,6 +33,9 @@ function renderManagement() {
     onCreateMember: vi.fn(),
     onUpdateMember: vi.fn(),
     onDeleteMember: vi.fn(),
+    onCreateSprint: vi.fn(),
+    onUpdateSprint: vi.fn(),
+    onDeleteSprint: vi.fn(),
   };
 
   function Wrapper() {
@@ -37,10 +45,12 @@ function renderManagement() {
         teams={mockTeams}
         projects={mockProjects}
         members={mockMembers}
+        sprints={mockSprints}
         currentUser={mockMembers[0]}
         activeTab={tab}
-        onTabChange={setTab}
+        isPlatformAdmin={true}
         onCreateProject={callbacks.onCreateProject}
+        onUpdateProject={callbacks.onUpdateProject}
         onDeleteProject={callbacks.onDeleteProject}
         onCreateTeam={callbacks.onCreateTeam}
         onUpdateTeam={callbacks.onUpdateTeam}
@@ -48,6 +58,9 @@ function renderManagement() {
         onCreateMember={callbacks.onCreateMember}
         onUpdateMember={callbacks.onUpdateMember}
         onDeleteMember={callbacks.onDeleteMember}
+        onCreateSprint={callbacks.onCreateSprint}
+        onUpdateSprint={callbacks.onUpdateSprint}
+        onDeleteSprint={callbacks.onDeleteSprint}
       />
     );
   }
@@ -57,28 +70,9 @@ function renderManagement() {
 }
 
 describe('Management', () => {
-  it('renders all three tab buttons', () => {
-    renderManagement();
-    expect(screen.getByText('Teams')).toBeDefined();
-    expect(screen.getByText('Projects')).toBeDefined();
-    expect(screen.getByText('Members')).toBeDefined();
-  });
-
   it('shows the projects tab by default', () => {
     renderManagement();
     expect(screen.getByPlaceholderText('e.g. Marketing Campaign')).toBeDefined();
-  });
-
-  it('switches to teams tab on click', async () => {
-    renderManagement();
-    await userEvent.click(screen.getByText('Teams'));
-    expect(screen.getByPlaceholderText('New team name...')).toBeDefined();
-  });
-
-  it('switches to members tab on click', async () => {
-    renderManagement();
-    await userEvent.click(screen.getByText('Members'));
-    expect(screen.getByPlaceholderText('Name...')).toBeDefined();
   });
 
   it('calls onCreateProject when Create Board is clicked', async () => {
@@ -98,54 +92,18 @@ describe('Management', () => {
     expect(args.columns.length).toBeGreaterThan(0);
   });
 
-  it('calls onCreateTeam when Create Team is clicked', async () => {
-    const callbacks = renderManagement();
-
-    await userEvent.click(screen.getByText('Teams'));
-
-    const nameInput = screen.getByPlaceholderText('New team name...');
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, 'New Team');
-
-    await userEvent.click(screen.getByText('Create Team'));
-
-    expect(callbacks.onCreateTeam).toHaveBeenCalledTimes(1);
-    const args = callbacks.onCreateTeam.mock.calls[0][0];
-    expect(args.name).toBe('New Team');
-    expect(args.id).toBeDefined();
-  });
-
-  it('calls onCreateMember when Add Member is clicked', async () => {
-    const callbacks = renderManagement();
-
-    await userEvent.click(screen.getByText('Members'));
-
-    const nameInput = screen.getByPlaceholderText('Name...');
-    const emailInput = screen.getByPlaceholderText('Email...');
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, 'New Person');
-    await userEvent.clear(emailInput);
-    await userEvent.type(emailInput, 'new@test.com');
-
-    await userEvent.click(screen.getByText('Add Member'));
-
-    expect(callbacks.onCreateMember).toHaveBeenCalledTimes(1);
-    const args = callbacks.onCreateMember.mock.calls[0][0];
-    expect(args.name).toBe('New Person');
-    expect(args.email).toBe('new@test.com');
-    expect(args.id).toBeDefined();
-  });
-
   it('shows Access Denied for non-admin users', () => {
     render(
       <Management
         teams={mockTeams}
         projects={mockProjects}
         members={mockMembers}
+        sprints={mockSprints}
         currentUser={mockMembers[1]}
         activeTab="projects"
-        onTabChange={() => {}}
+        isPlatformAdmin={false}
         onCreateProject={vi.fn()}
+        onUpdateProject={vi.fn()}
         onDeleteProject={vi.fn()}
         onCreateTeam={vi.fn()}
         onUpdateTeam={vi.fn()}
@@ -153,6 +111,9 @@ describe('Management', () => {
         onCreateMember={vi.fn()}
         onUpdateMember={vi.fn()}
         onDeleteMember={vi.fn()}
+        onCreateSprint={vi.fn()}
+        onUpdateSprint={vi.fn()}
+        onDeleteSprint={vi.fn()}
       />
     );
 

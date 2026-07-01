@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { TaskCard } from '../TaskCard';
-import { Task, Member } from '../../types';
+import { TaskCard } from '@/components/TaskCard';
+import { Task, Member } from '@/types';
 
 const mockUser: Member = {
   id: 'm1',

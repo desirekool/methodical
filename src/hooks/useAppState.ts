@@ -96,6 +96,11 @@ export function useAppState() {
     return rawTeams.map(t => ({
       ...t,
       memberIds: rawTeamMembers.filter(tm => tm.teamId === t.id).map(tm => tm.memberId),
+      memberRoles: Object.fromEntries(
+        rawTeamMembers
+          .filter(tm => tm.teamId === t.id)
+          .map(tm => [tm.memberId, tm.role || 'member'])
+      ),
     })) as unknown as Team[];
   }, [initData]);
 
@@ -109,10 +114,6 @@ export function useAppState() {
   }, [initData]);
 
   const derivedCurrentUser = useMemo(() => members[0] || { id: '', name: '', avatar: '', role: 'user' as const, email: '' }, [members]);
-  const derivedSprintId = useMemo(() => {
-    const backlog = sprints.find(s => s.status === 'backlog');
-    return backlog?.id || sprints[0]?.id || '';
-  }, [sprints]);
 
   const [manualCurrentUser, setManualCurrentUser] = useState<Member | null>(null);
   const [manualSprintId, setManualSprintId] = useState<string | null>(null);
@@ -128,9 +129,6 @@ export function useAppState() {
 
   const derivedProjectId = useMemo(() => visibleProjects[0]?.id || projects[0]?.id || '', [visibleProjects, projects]);
 
-  const activeSprintId = manualSprintId || derivedSprintId;
-  const selectedProjectId = manualProjectId || derivedProjectId;
-
   const setCurrentUser = useCallback((user: Member) => {
     setManualCurrentUser(user);
     setManualProjectId(null);
@@ -141,12 +139,34 @@ export function useAppState() {
 
   const emptyFilter: FilterState = { search: '', projectIds: [], memberIds: [], categories: [], labels: [] };
 
-  const [activeView, setActiveView] = useState<'board' | 'management' | 'boards-list'>('board');
+  const [activeView, setActiveView] = useState<'board' | 'management' | 'backlog'>('board');
   const [managementTab, setManagementTab] = useState<'teams' | 'projects' | 'members'>('teams');
   const [filters, setFilters] = useState<FilterState>(emptyFilter);
 
+  const visibleSprints = useMemo(() => {
+    if (!currentUser?.role || currentUser.role === 'admin') return sprints;
+    const userTeamIds = teams.filter(t => t.memberIds?.includes(currentUser.id)).map(t => t.id);
+    return sprints.filter(s => !s.teamId || userTeamIds.includes(s.teamId));
+  }, [sprints, teams, currentUser]);
+
+  const isPlatformAdmin = currentUser?.role === 'admin';
+
+  const derivedSprintId = useMemo(() => {
+    const backlog = visibleSprints.find(s => s.status === 'backlog');
+    return backlog?.id || visibleSprints[0]?.id || '';
+  }, [visibleSprints]);
+
+  const activeSprintId = manualSprintId || derivedSprintId;
+  const selectedProjectId = manualProjectId || derivedProjectId;
+
   const currentProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
   const currentTeam = useMemo(() => teams.find(t => t.id === currentProject?.teamId), [teams, currentProject]);
+
+  const isTeamAdmin = useMemo(() => {
+    if (!currentTeam || !currentUser) return false;
+    if (isPlatformAdmin) return true;
+    return currentTeam.memberRoles?.[currentUser.id] === 'admin';
+  }, [currentTeam, currentUser, isPlatformAdmin]);
 
   const allCategories = useMemo(() => Array.from(new Set(dummyTasks.map(t => t.category))), [dummyTasks]);
   const allLabels = useMemo(() => Array.from(new Set(dummyTasks.flatMap(t => t.labels))), [dummyTasks]);
@@ -222,23 +242,26 @@ export function useAppState() {
     return newId;
   }, [currentProject, selectedProjectId, activeSprintId, currentUser, dummyTasks, invalidate, addToast]);
 
-  const handleCreateSprint = useCallback(() => {
-    const newSprint: Sprint = {
-      id: crypto.randomUUID(),
-      name: `Sprint ${sprints.length + 1}`,
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: 'planning',
-    };
+  const handleCreateSprint = useCallback((sprint: Sprint) => {
     apiFetch('/api/sprints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newSprint),
-    }).then(() => {
-      invalidate();
-      setActiveSprintId(newSprint.id);
-    }).catch(err => addToast(err.message));
-  }, [sprints.length, invalidate, setActiveSprintId, addToast]);
+      body: JSON.stringify(sprint),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleUpdateSprint = useCallback((sprintId: string, updates: Partial<Sprint>) => {
+    apiFetch(`/api/sprints/${sprintId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    }).then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
+
+  const handleDeleteSprint = useCallback((sprintId: string) => {
+    apiFetch(`/api/sprints/${sprintId}`, { method: 'DELETE' })
+      .then(invalidate).catch(err => addToast(err.message));
+  }, [invalidate, addToast]);
 
   const handleUpdateProject = useCallback((updatedProject: Project) => {
     apiFetch(`/api/projects/${updatedProject.id}`, {
@@ -324,13 +347,13 @@ export function useAppState() {
     }).then(invalidate).catch(err => addToast(err.message));
   }, [invalidate, addToast]);
 
-  const handleUpdateTeam = useCallback((teamId: string, memberIds: string[]) => {
+  const handleUpdateTeam = useCallback((teamId: string, memberIds: string[], memberRoles?: Record<string, string>) => {
     const team = teams.find(t => t.id === teamId);
     if (!team) return;
     apiFetch(`/api/teams/${teamId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: team.name, memberIds }),
+      body: JSON.stringify({ name: team.name, memberIds, memberRoles: memberRoles || {} }),
     }).then(invalidate).catch(err => addToast(err.message));
   }, [teams, invalidate, addToast]);
 
@@ -370,6 +393,7 @@ export function useAppState() {
     tasks: dummyTasks, setTasks: invalidate,
     projects, setProjects: invalidate,
     sprints, setSprints: invalidate,
+    visibleSprints,
     teams, setTeams: invalidate,
     members, setMembers: invalidate,
     currentUser, setCurrentUser,
@@ -379,9 +403,11 @@ export function useAppState() {
     selectedProjectId, setSelectedProjectId,
     filters, setFilters,
     currentProject, currentTeam,
+    isTeamAdmin, isPlatformAdmin,
     visibleProjects, allCategories, allLabels, filteredTasks,
     handleUpdateTask, handleTasksReorder, handleAddTask,
-    handleCreateSprint, handleUpdateProject,
+    handleCreateSprint, handleUpdateSprint, handleDeleteSprint,
+    handleUpdateProject,
     handleDeleteTask, handleCopyTask,
     handleCreateProject, handleDeleteProject,
     handleCreateTeam, handleUpdateTeam, handleDeleteTeam,

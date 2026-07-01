@@ -25,8 +25,8 @@ export const MEMBERS: Member[] = [
 ];
 
 export const TEAMS: Team[] = [
-  { id: 't1', name: 'Core Platform', memberIds: ['m1', 'm2'] },
-  { id: 't2', name: 'Design & UX', memberIds: ['m2', 'm3'] },
+  { id: 't1', name: 'Core Platform', memberIds: ['m1', 'm2'], memberRoles: { m1: 'admin', m2: 'member' } },
+  { id: 't2', name: 'Design & UX', memberIds: ['m2', 'm3'], memberRoles: { m2: 'admin', m3: 'member' } },
 ];
 
 export const PROJECTS: Project[] = [
@@ -69,10 +69,10 @@ export const PROJECTS: Project[] = [
 ];
 
 export const SPRINTS: Sprint[] = [
-  { id: 'b_t1', name: 'Backlog', startDate: '2023-01-01', endDate: '2026-12-31', status: 'backlog' },
-  { id: 'b_t2', name: 'Backlog', startDate: '2023-01-01', endDate: '2026-12-31', status: 'backlog' },
-  { id: 's1', name: 'Sprint 24', startDate: '2023-10-10', endDate: '2023-10-24', status: 'active' },
-  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'planned' },
+  { id: 'b_t1', name: 'Backlog', startDate: '2023-01-01', endDate: '2026-12-31', status: 'backlog', teamId: 't1' },
+  { id: 'b_t2', name: 'Backlog', startDate: '2023-01-01', endDate: '2026-12-31', status: 'backlog', teamId: 't2' },
+  { id: 's1', name: 'Sprint 24', startDate: '2023-10-10', endDate: '2023-10-24', status: 'active', teamId: 't1' },
+  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'planned', teamId: 't1' },
 ];
 
 export const INITIAL_TASKS: Task[] = [

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { reseed } from '../../../../test/api-setup';
+import { reseed } from '../../api-setup';
 
 let GET: any;
 
 beforeAll(async () => {
   reseed();
-  const mod = await import('../route');
+  const mod = await import('@/app/api/init/route');
   GET = mod.GET;
 });
 

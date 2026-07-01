@@ -1,14 +1,16 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { reseed } from '../../../../test/api-setup';
+import { reseed } from '../../api-setup';
 
-let POST: any, DELETE: any;
+let POST: any;
+let DELETE: any;
 
 beforeAll(async () => {
   reseed();
-  const mod = await import('../route');
+  const mod = await import('@/app/api/projects/route');
   POST = mod.POST;
-  DELETE = mod.DELETE;
+  const idMod = await import('@/app/api/projects/[id]/route');
+  DELETE = idMod.DELETE;
 });
 
 describe('POST /api/projects', () => {
@@ -52,7 +54,7 @@ describe('POST /api/projects', () => {
   });
 });
 
-describe('DELETE /api/projects', () => {
+describe('DELETE /api/projects/[id]', () => {
   it('deletes a project and its columns', async () => {
     const req = new NextRequest('http://localhost:3000/api/projects/test-p1', {
       method: 'DELETE',

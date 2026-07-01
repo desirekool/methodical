@@ -1,6 +1,7 @@
 export type Status = string;
 
 export type UserRole = 'admin' | 'user';
+export type TeamRole = 'admin' | 'member';
 
 export interface Column {
   id: string;
@@ -20,6 +21,7 @@ export interface Team {
   id: string;
   name: string;
   memberIds: string[];
+  memberRoles: Record<string, TeamRole>;
 }
 
 export interface ChecklistItem {
@@ -66,6 +68,7 @@ export interface Sprint {
   startDate: string;
   endDate: string;
   status: 'planning' | 'planned' | 'active' | 'completed' | 'backlog';
+  teamId?: string;
 }
 
 export interface FilterState {

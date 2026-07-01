@@ -4,8 +4,8 @@ import path from 'path';
 export default defineConfig({
   test: {
     environment: 'node',
-    setupFiles: ['./src/test/api-setup.ts'],
-    include: ['src/app/api/**/__tests__/**/*.test.ts'],
+    setupFiles: ['./test/api-setup.ts'],
+    include: ['test/api/**/*.test.ts'],
     globals: true,
     fileParallelism: false,
     coverage: {
@@ -13,7 +13,7 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage/api',
       include: ['src/app/api/**/*.ts'],
-      exclude: ['src/app/api/**/__tests__/**'],
+      exclude: ['test/api/**'],
     },
   },
   resolve: {

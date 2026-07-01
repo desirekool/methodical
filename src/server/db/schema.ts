@@ -33,6 +33,7 @@ export const teams = sqliteTable('teams', {
 export const teamMembers = sqliteTable('team_members', {
   teamId: text('team_id').notNull().references(() => teams.id),
   memberId: text('member_id').notNull().references(() => members.id),
+  role: text('role', { enum: ['admin', 'member'] }).notNull().default('member'),
 });
 
 export const sprints = sqliteTable('sprints', {
@@ -41,6 +42,7 @@ export const sprints = sqliteTable('sprints', {
   startDate: text('start_date').notNull(),
   endDate: text('end_date').notNull(),
   status: text('status', { enum: ['planning', 'planned', 'active', 'completed', 'backlog'] }).notNull().default('backlog'),
+  teamId: text('team_id').references(() => teams.id),
 });
 
 export const tasks = sqliteTable('tasks', {

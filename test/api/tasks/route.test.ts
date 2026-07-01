@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeAll } from 'vitest';
-import { reseed } from '../../../../test/api-setup';
+import { reseed } from '../../api-setup';
 
 let GET: any, POST: any;
 
 beforeAll(async () => {
   reseed();
-  const mod = await import('../route');
+  const mod = await import('@/app/api/tasks/route');
   GET = mod.GET;
   POST = mod.POST;
 });

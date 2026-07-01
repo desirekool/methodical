@@ -396,7 +396,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                     {attachment.type === 'pdf' ? (
                       <FileText className="w-6 h-6 text-primary" />
                     ) : (
-                      <Image src={attachment.url} alt={attachment.name} fill className="object-cover" referrerPolicy="no-referrer" />
+                      <Image src={attachment.url} alt={attachment.name} fill sizes="48px" className="object-cover" referrerPolicy="no-referrer" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -425,7 +425,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
             
             <div className="flex gap-4 mb-8">
               <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
-                <Image alt={currentUser.name} src={currentUser.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+                <Image alt={currentUser.name} src={currentUser.avatar} fill sizes="32px" className="object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="flex-1">
                 <div className="bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-hidden">
@@ -453,7 +453,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                   {(task.activities || []).map(activity => (
                     <div key={activity.id} className="flex gap-4 items-start">
                       <div className="relative w-6 h-6 rounded-full overflow-hidden shrink-0 mt-1">
-                        <Image alt={activity.user.name} src={activity.user.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+                        <Image alt={activity.user.name} src={activity.user.avatar} fill sizes="24px" className="object-cover" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1">
                         <p className="text-xs text-on-surface">
@@ -470,7 +470,7 @@ export function TaskModal({ task, projects, sprints, members, onClose, onUpdateT
                 task.comments.map(comment => (
                   <div key={comment.id} className="flex gap-4">
                     <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
-                      <Image alt={comment.author.name} src={comment.author.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+                      <Image alt={comment.author.name} src={comment.author.avatar} fill sizes="32px" className="object-cover" referrerPolicy="no-referrer" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2 mb-1">

@@ -85,11 +85,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, projectName, projectCo
         <div className="flex items-center gap-2">
           {task.assignee && (
             <div className="relative w-6 h-6 rounded-full border-2 border-surface-container-lowest overflow-hidden" title={`Assigned to ${task.assignee.name}`}>
-                <Image alt={task.assignee.name} src={task.assignee.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+                <Image alt={task.assignee.name} src={task.assignee.avatar} fill sizes="24px" className="object-cover" referrerPolicy="no-referrer" />
               </div>
           )}
           <div className="relative w-4 h-4 rounded-full border border-surface-container-lowest overflow-hidden opacity-50" title={`Created by ${task.creator.name}`}>
-                <Image alt={task.creator.name} src={task.creator.avatar} fill className="object-cover" referrerPolicy="no-referrer" />
+                <Image alt={task.creator.name} src={task.creator.avatar} fill sizes="16px" className="object-cover" referrerPolicy="no-referrer" />
               </div>
         </div>
         

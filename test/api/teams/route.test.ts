@@ -3,15 +3,15 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { db } from '@/server/db';
 import { teamMembers } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { reseed } from '../../../../test/api-setup';
+import { reseed } from '../../api-setup';
 
 let POST: any, PUT: any, DELETE: any;
 
 beforeAll(async () => {
   reseed();
   const [mod, modId] = await Promise.all([
-    import('../route'),
-    import('../[id]/route'),
+    import('@/app/api/teams/route'),
+    import('@/app/api/teams/[id]/route'),
   ]);
   POST = mod.POST;
   PUT = modId.PUT;

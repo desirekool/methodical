@@ -25,6 +25,7 @@ function getBacklogSprints() {
     startDate: start,
     endDate: end,
     status: 'backlog' as const,
+    teamId: t.id,
   }));
 }
 
@@ -45,6 +46,7 @@ const seedTeamMembers = TEAMS.flatMap((t) =>
   t.memberIds.map((memberId) => ({
     teamId: t.id,
     memberId,
+    role: t.memberRoles[memberId] || 'member',
   }))
 );
 
@@ -67,8 +69,8 @@ const seedColumns = PROJECTS.flatMap((p) =>
 
 const seedBacklogSprints = getBacklogSprints();
 const seedRegularSprints = [
-  { id: 's1', name: 'Sprint 24', startDate: '2023-10-10', endDate: '2023-10-24', status: 'active' as const },
-  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'planned' as const },
+  { id: 's1', name: 'Sprint 24', startDate: '2023-10-10', endDate: '2023-10-24', status: 'active' as const, teamId: 't1' },
+  { id: 's2', name: 'Sprint 25', startDate: '2023-10-25', endDate: '2023-11-08', status: 'planned' as const, teamId: 't1' },
 ];
 const seedSprints = [...seedBacklogSprints, ...seedRegularSprints];
 

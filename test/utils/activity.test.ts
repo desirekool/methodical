@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createActivity } from '../activity';
-import { Member } from '../../types';
+import { createActivity } from '@/utils/activity';
+import { Member } from '@/types';
 
 const mockUser: Member = {
   id: 'test-1',

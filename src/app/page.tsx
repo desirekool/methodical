@@ -1,11 +1,11 @@
 'use client';
 
-import { Layout } from '../components/Layout';
-import { Board } from '../components/Board';
-import { FilterBar } from '../components/FilterBar';
-import { Management } from '../components/Management';
-import { Plus } from 'lucide-react';
-import { useAppState } from '../hooks/useAppState';
+import { Layout } from '@/components/Layout';
+import { Board } from '@/components/Board';
+import { FilterBar } from '@/components/FilterBar';
+import { Management } from '@/components/Management';
+import { Backlog } from '@/components/Backlog';
+import { useAppState } from '@/hooks/useAppState';
 
 export default function App() {
   const {
@@ -13,19 +13,21 @@ export default function App() {
     members, setMembers,
     activeView, setActiveView,
     managementTab, setManagementTab,
-    currentProject,
+    currentProject, currentTeam,
     filters, setFilters,
     projects, setProjects,
     allCategories, allLabels,
     filteredTasks,
-    sprints,
+    sprints, visibleSprints,
     selectedProjectId, setSelectedProjectId,
     activeSprintId, setActiveSprintId,
     tasks, setTasks,
     teams, setTeams,
     visibleProjects,
-    handleUpdateTask, handleAddTask,
-    handleCreateSprint, handleUpdateProject,
+    isTeamAdmin, isPlatformAdmin,
+    handleUpdateTask, handleTasksReorder, handleAddTask,
+    handleCreateSprint, handleUpdateSprint, handleDeleteSprint,
+    handleUpdateProject,
     handleDeleteTask, handleCopyTask,
     handleCreateProject, handleDeleteProject,
     handleCreateTeam, handleUpdateTeam, handleDeleteTeam,
@@ -98,9 +100,13 @@ export default function App() {
       members={members}
       activeView={activeView}
       setActiveView={setActiveView}
+      setManagementTab={setManagementTab}
       currentProject={currentProject}
+      projects={projects}
+      teams={teams}
       searchValue={filters.search}
       onSearchChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
+      setSelectedProjectId={setSelectedProjectId}
     >
       {activeView === 'board' && (
         <div className="flex flex-col h-full">
@@ -121,7 +127,7 @@ export default function App() {
                   onChange={(e) => setActiveSprintId(e.target.value)}
                   className="bg-surface-container-high text-on-surface text-sm px-3 py-1.5 rounded-lg border-none focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
                 >
-                  {[...sprints]
+                  {[...visibleSprints]
                     .sort((a, b) => {
                       if (a.status === 'backlog') return -1;
                       if (b.status === 'backlog') return 1;
@@ -133,13 +139,6 @@ export default function App() {
                       </option>
                     ))}
                 </select>
-                <button
-                  onClick={handleCreateSprint}
-                  className="p-1.5 hover:bg-surface-container-highest rounded-lg text-primary transition-colors"
-                  title="Create New Sprint"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
               </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-on-surface-variant">
@@ -163,16 +162,13 @@ export default function App() {
             tasks={filteredTasks}
             projects={projects}
             currentProject={currentProject!}
-            sprints={sprints}
+            sprints={visibleSprints}
             members={members}
             onUpdateTask={handleUpdateTask}
             onUpdateProject={handleUpdateProject}
             onAddComment={handleAddComment}
             onUpdateComment={handleUpdateComment}
-            onTasksReorder={(newTasks) => {
-              const otherTasks = tasks.filter(t => !filteredTasks.some(ft => ft.id === t.id));
-              setTasks([...otherTasks, ...newTasks]);
-            }}
+            onTasksReorder={handleTasksReorder}
             onAddTask={handleAddTask}
             onDeleteTask={handleDeleteTask}
             onCopyTask={handleCopyTask}
@@ -186,10 +182,15 @@ export default function App() {
           teams={teams}
           projects={projects}
           members={members}
+          sprints={sprints}
           currentUser={currentUser}
           activeTab={managementTab}
-          onTabChange={setManagementTab}
+          isPlatformAdmin={isPlatformAdmin}
           onCreateProject={handleCreateProject}
+          onUpdateProject={(projectId, updates) => {
+            const project = projects.find(p => p.id === projectId);
+            if (project) handleUpdateProject({ ...project, ...updates });
+          }}
           onDeleteProject={handleDeleteProject}
           onCreateTeam={handleCreateTeam}
           onUpdateTeam={handleUpdateTeam}
@@ -197,41 +198,25 @@ export default function App() {
           onCreateMember={handleCreateMember}
           onUpdateMember={handleUpdateMember}
           onDeleteMember={handleDeleteMember}
+          onCreateSprint={handleCreateSprint}
+          onUpdateSprint={handleUpdateSprint}
+          onDeleteSprint={handleDeleteSprint}
         />
       )}
 
-      {activeView === 'boards-list' && (
-        <div className="p-8 bg-surface h-full overflow-y-auto custom-scrollbar">
-          <h2 className="text-2xl font-bold text-on-surface mb-8">Active Boards</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleProjects.map(project => (
-              <div
-                key={project.id}
-                onClick={() => {
-                  setSelectedProjectId(project.id);
-                  setActiveView('board');
-                }}
-                className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 hover:border-primary/50 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ backgroundColor: project.color }}>
-                    {project.name[0]}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-on-surface group-hover:text-primary transition-colors">{project.name}</h3>
-                    <p className="text-xs text-on-surface-variant">
-                      {teams.find(t => t.id === project.teamId)?.name || 'No Team'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                  <span>{tasks.filter(t => t.projectId === project.id).length} Tasks</span>
-                  <span>{tasks.filter(t => t.projectId === project.id && t.status === 'done').length} Completed</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {activeView === 'backlog' && currentTeam && (
+        <Backlog
+          tasks={tasks}
+          sprints={sprints}
+          members={members}
+          currentProject={currentProject}
+          currentTeam={currentTeam}
+          currentUser={currentUser}
+          isTeamAdmin={isTeamAdmin}
+          isPlatformAdmin={isPlatformAdmin}
+          onUpdateTask={handleUpdateTask}
+          onUpdateSprint={handleUpdateSprint}
+        />
       )}
     </Layout>
   );
